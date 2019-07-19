@@ -4,7 +4,7 @@ import {hexToBinary} from './util';
 const ecda=require("elliptic");
 const ec=new ecda.ec('secp256k1');
 const randomstring =require("randomstring");
-
+const CurrentNodeUrl=process.argv[3];
 import {ProcessTransaction,TransactionInputs,TransactionOutput} from './transaction';
 
 //function to generatestring
@@ -77,6 +77,8 @@ var Block = /** @class */ (function () {
 var genesisBlock = new Block(0,"First Block", '91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627', '', 1465154705, 'my genesis block!!', 0, 0);
 
 var blockchain = [genesisBlock];
+const currentNodeUrl=CurrentNodeUrl;
+const networkNodes=[];
 
 //getting the blockchain
 var getBlockchain = function () { 
@@ -318,7 +320,7 @@ var replaceChain = function (newBlocks) {
 };
 
     
-    export {Block, getBlockchain, getLatestBlock, generateNextBlock, isValidBlockStructure, replaceChain, addBlock};    
+    export {Block,currentNodeUrl,networkNodes, getBlockchain, getLatestBlock, generateNextBlock, isValidBlockStructure, replaceChain, addBlock};    
     
     
 

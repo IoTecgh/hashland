@@ -5,13 +5,18 @@
   "main": "blockchain.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "node_1": "nodemon --watch dev -e  js start.js 3001 http://localhost:3001 ",
+    "node_2": "nodemon --watch dev -e  js start.js 3002 http://localhost:3002",
+    "node_3": "nodemon --watch dev -e  js start.js 3003 http://localhost:3003",
+    "node_4": "nodemon --watch dev -e  js start.js 3004 http://localhost:3004",
+    "node_5": "nodemon --watch dev -e  js start.js 3005 http://localhost:3005",
     "start": "node start.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.19.0",
     "babel-core": "^6.26.3",
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-polyfill": "^6.26.0",
@@ -27,7 +32,7 @@
     "firebase": "^5.8.3",
     "firebase-admin": "^7.0.0",
     "hashmap": "^2.3.0",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.15",
     "morgan": "^1.9.1",
     "nexmo": "^2.4.1",
     "nodemailer": "^5.1.1",

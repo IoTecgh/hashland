@@ -309,9 +309,7 @@ import {register,login,createfolder} from './authentication/authentication';
         res.send(feedback)
       });
     
-      app.get('/peers', function (req, res) {
-        res.send(getSockets().map(function (s) { return s._socket.remoteAddress + ':' + s._socket.remotePort; }));
-       });
+      
       app.post('/addPeer', function (req, res) {
         connectToPeers(req.body.peer);
         res.send("connected successfully");
@@ -323,9 +321,6 @@ app.get('/getKeys',function(req,res){
   
 });
 
-// app.listen(process.env.PORT, function(){
-//   console.log('Your node js server is running');
-// });
 
 app.listen(port, () => console.log(`Your node js server is running ${port}!`));
 

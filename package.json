@@ -36,6 +36,7 @@
     "morgan": "^1.9.1",
     "nexmo": "^2.4.1",
     "nodemailer": "^5.1.1",
+    "nodemon": "^1.19.1",
     "random-number-csprng": "^1.0.2",
     "randomstring": "^1.1.5",
     "save": "^2.3.3",

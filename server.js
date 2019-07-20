@@ -133,6 +133,13 @@ import {register,login,createfolder} from './authentication/authentication';
                    
               }) 
 
+              app.post('/recieve-new-block', function(req, res) {
+            
+                var newBlock = generateNextBlock(req.body.newBlock);
+                var feedback=newBlock.message;
+                res.send(feedback)
+
+              });
       app.post('/login',function(req,res){
          
         login(req.body,function(data){
@@ -285,9 +292,23 @@ import {register,login,createfolder} from './authentication/authentication';
       app.post('/mineBlock', function (req, res) {
         var newBlock = generateNextBlock(req.body);
         var feedback=newBlock.message;
+        const newestBlock=newBlock.newBlock
+        const requestPromises=[]
+        networkNodes.forEach(NetworkNodeURL=>{
+        const requestOptions={
+        uri:NetworkNodeURL +'/recieve-new-block',
+        method:'POST',
+        body:{newBlock:newestBlock},
+        json:true
+    };
+   requestPromises.push(rp(requestOptions));
+   Promise.all(requestPromises).then(data =>{
+    res.json({note:'new block mined successfully'})
+})
+});
         res.send(feedback)
       });
-
+    
       app.get('/peers', function (req, res) {
         res.send(getSockets().map(function (s) { return s._socket.remoteAddress + ':' + s._socket.remotePort; }));
        });
@@ -306,6 +327,6 @@ app.get('/getKeys',function(req,res){
 //   console.log('Your node js server is running');
 // });
 
-app.listen(port, () => console.log(`Your node js server is running ${port}!`))
+app.listen(port, () => console.log(`Your node js server is running ${port}!`));
 
-//initP2PServer(p2pPort);
+//initP2PServer(p2pPort)

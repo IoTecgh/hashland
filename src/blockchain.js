@@ -170,7 +170,7 @@ var generateNextBlock = function (blockData) {
     var newBlock = findBlock(nextIndex,Blocktitle, previousBlock.hash, nextTimestamp, newBlockData, difficulty);
     var message;
     message=addBlock(newBlock).msg;
-    broadcastLatest();
+    //broadcastLatest();
     return{
       newBlock,
       message:message  

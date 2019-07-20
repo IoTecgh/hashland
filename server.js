@@ -4,6 +4,8 @@ const express=require("express");
 const morgan=require("morgan");
 const bodyParser=require("body-parser");
 //var httpPort = parseInt(process.env.HTTP_PORT) || 5000;
+const rp=require('request-promise');
+const port=process.argv[2];
 var p2pPort = parseInt(process.env.P2P_PORT) || 6001;
 const blockchain=require("./src/blockchain");
 const cors = require('cors')
@@ -17,7 +19,7 @@ require('dotenv').config();
 
 
 import {connectToPeers, getSockets, initP2PServer} from './src/peer2peer';
-import {Block,Transaction,LandOwnerShip, generateNextBlock, getBlockchain} from './src/blockchain';
+import {Block,Transaction,LandOwnerShip, generateNextBlock, getBlockchain,networkNodes,currentNodeUrl} from './src/blockchain';
 import {generatekeys,generateSignature,getDataFromSignature,ProcessTransaction,transact,isValidAddress}from './src/transaction';
 import {firebase}from './firebase/firebasekey';
 import {addland,landownership,saveAsaasecode,getAsaaseDetails,updateAsaaseCode,asaasecodeExist,addLandToAccount,setLandForSale,removeFromSale,getallLandsForSale,getallTransactions,addTransaction} from './firebase/modules';
@@ -73,10 +75,71 @@ import {register,login,createfolder} from './authentication/authentication';
           
       })
     })
-      app.get('/blocks', function (req, res) {
-        res.send(getBlockchain());
+    app.get('/blocks', function (req, res) {
+      res.json({blockchain:getBlockchain(),
+                currentNodeUrl:currentNodeUrl,
+                networkNodes:networkNodes
+      
       });
+      
+    });
 
+    app.post('/register-broadcast', function(req, res) {
+      const newNodeUrl=req.body.newNodeUrl
+      if(networkNodes.indexOf(newNodeUrl)==-1)  networkNodes.push(newNodeUrl);
+      const RegisterNodesPromises=[]
+      networkNodes.forEach(NetworkNodeURL=> {
+      const requestOptions={
+      uri:NetworkNodeURL+ '/register-node',
+      method:'POST',
+      body:{newNodeUrl:newNodeUrl},
+      json:true
+  };
+  RegisterNodesPromises.push(rp(requestOptions));
+      });
+      Promise.all(RegisterNodesPromises).then(data=>{
+          //registering all avalable nodes to the new node
+      const bulkRegisterOptions={
+      uri:newNodeUrl+ '/register-nodes-bulk',
+      method:'POST',
+      body:{ allNetworkNodes: [...networkNodes,currentNodeUrl]},
+      json:true
+  };
+  return rp(bulkRegisterOptions);
+      }).then(data =>{
+          res.json({note:'new node registered successfully'})
+      }) 
+      })
+  //register a node with network
+      app.post('/register-node', function(req, res) {
+         const newNodeUrl=req.body.newNodeUrl;
+         const nodeNotPresent=networkNodes.indexOf(newNodeUrl)==-1;
+         const notcurrentNode=currentNodeUrl!==newNodeUrl;
+         if (nodeNotPresent&&notcurrentNode)networkNodes.push(newNodeUrl);
+         res.json({note:'new node registered successfullt with node'});
+  
+              
+          })
+  
+          app.post('/register-nodes-bulk', function(req, res) {
+              const allNetworkNodes=req.body.allNetworkNodes;
+              allNetworkNodes.forEach(NetworkNodeURL =>{
+                  const nodeNotPresent=networkNodes.indexOf(NetworkNodeURL)==-1
+                  const notcurrentNode=currentNodeUrl!==NetworkNodeURL;
+                  if(nodeNotPresent&&notcurrentNode)networkNodes.push(NetworkNodeURL) ;
+              });
+              res.json({note:'bulk registrattion success',allNetworkNodes})
+  
+                   
+              }) 
+
+              app.post('/recieve-new-block', function(req, res) {
+            
+                var newBlock = generateNextBlock(req.body.newBlock);
+                var feedback=newBlock.message;
+                res.send(feedback)
+
+              });
       app.post('/login',function(req,res){
          
         login(req.body,function(data){
@@ -229,9 +292,23 @@ import {register,login,createfolder} from './authentication/authentication';
       app.post('/mineBlock', function (req, res) {
         var newBlock = generateNextBlock(req.body);
         var feedback=newBlock.message;
+        const newestBlock=newBlock.newBlock
+        const requestPromises=[]
+        networkNodes.forEach(NetworkNodeURL=>{
+        const requestOptions={
+        uri:NetworkNodeURL +'/recieve-new-block',
+        method:'POST',
+        body:{newBlock:newestBlock},
+        json:true
+    };
+   requestPromises.push(rp(requestOptions));
+   Promise.all(requestPromises).then(data =>{
+    res.json({note:'new block mined successfully'})
+})
+});
         res.send(feedback)
       });
-
+    
       app.get('/peers', function (req, res) {
         res.send(getSockets().map(function (s) { return s._socket.remoteAddress + ':' + s._socket.remotePort; }));
        });
@@ -246,10 +323,10 @@ app.get('/getKeys',function(req,res){
   
 });
 
-app.listen(process.env.PORT, function(){
-  console.log('Your node js server is running');
-});
+// app.listen(process.env.PORT, function(){
+//   console.log('Your node js server is running');
+// });
 
+app.listen(port, () => console.log(`Your node js server is running ${port}!`));
 
-
-initP2PServer(p2pPort);
+//initP2PServer(p2pPort)

@@ -13,6 +13,9 @@ const app = express();
 const routes=require('./firebase/route');
 const path = require('path');
 const session = require('express-session');
+const userwithdb=require('./authentication/authentication')
+const middleware=require('./firebase/middleware')
+
 require('dotenv').config();
 
 
@@ -141,76 +144,11 @@ import {register,login,createfolder} from './authentication/authentication';
                 res.send(feedback)
 
               });
-              app.get('/consensus',function(req,res){
 
-                const promises=[]
-                networkNodes.forEach(NetworkNodeURL=>{
-                    const requestOptions={
-                        uri:NetworkNodeURL +'/blocks',
-                        method:'GET',
-                        json:true
-                    };
-              
-                    promises.push(rp(requestOptions));
-                   
-                 })
-                
-                 Promise.all(promises).then(chain=>{
-                  const currentchainlenth=blockchain.length;
-                  let maxchainLength=currentchainlenth;
-                  let newlongestchain=null;
-                  
-                  chain.forEach(block=>{ 
-                 
-                    if(block.blockchain.length > maxchainLength){
-                        maxchainLength=block.blockchain.length;
-                        newlongestchain=block.blockchain;
-                      
-          
-          
-                    };
-                });
-          
-                if(newlongestchain){
-                  replaceChain(newlongestchain);
-                  //btc.pendingTransactions=newpendingTransactions
-                  res.json({note:'this is the new current longest chain',
-                  chain:blockchain
-           })
-           
-           
-           }
-                
-              else if(!newlongestchain || (newlongestchain && !chainIsValid(newlongestchain))){
-                  res.json({note:'current chain has not been replaced',
-                  chain:blockchain,
-                  longest_chain_length:blockchain.length
-            });
-            } 
-              })
-
-
-              });
-      app.post('/login',function(req,res){
-         
-        login(req.body,function(data){
-          var response=data;
-          if(response.auth){
-            res.status(200).send({success:response.response})
-          }
-          else{
-            res.status(404).send(response.response)
-          }
-        })
-         
-      })
 
       
 
-      app.post('/register',function(req,res){
-
-      })
-
+   
       app.post('/RegisterLand',function(req,res){
         var data=landownership(req.body);
         
@@ -360,9 +298,7 @@ import {register,login,createfolder} from './authentication/authentication';
        res.send(newBlock)
       });
     
-      app.get('/peers', function (req, res) {
-        res.send(getSockets().map(function (s) { return s._socket.remoteAddress + ':' + s._socket.remotePort; }));
-       });
+      
       app.post('/addPeer', function (req, res) {
         connectToPeers(req.body.peer);
         res.send("connected successfully");
@@ -373,11 +309,14 @@ app.get('/getKeys',function(req,res){
     res.send(generatekeys());
   
 });
+app.post('/create',middleware.verifyToken,userwithdb.User.create)
+app.post('/login',userwithdb.User.login)
+app.put('/editProfile',middleware.verifyToken,userwithdb.User.editProfile)
 
-// app.listen(process.env.PORT, function(){
-//   console.log('Your node js server is running');
-// });
 
-app.listen(port, () => console.log(`Your node js server is running ${port}!`));
+app.listen(8008, () => {
+  console.log('App listening on port 8008!')
+});
+
 
 //initP2PServer(p2pPort)

@@ -13,6 +13,9 @@ const app = express();
 const routes=require('./firebase/route');
 const path = require('path');
 const session = require('express-session');
+const userwithdb=require('./authentication/authentication')
+const middleware=require('./firebase/middleware')
+
 require('dotenv').config();
 
 
@@ -141,26 +144,11 @@ import {register,login,createfolder} from './authentication/authentication';
                 res.send(feedback)
 
               });
-      app.post('/login',function(req,res){
-         
-        login(req.body,function(data){
-          var response=data;
-          if(response.auth){
-            res.status(200).send({success:response.response})
-          }
-          else{
-            res.status(404).send(response.response)
-          }
-        })
-         
-      })
+    
 
       
 
-      app.post('/register',function(req,res){
-
-      })
-
+   
       app.post('/RegisterLand',function(req,res){
         var data=landownership(req.body);
         
@@ -322,8 +310,14 @@ app.get('/getKeys',function(req,res){
     res.send(generatekeys());
   
 });
+app.post('/create',middleware.verifyToken,userwithdb.User.create)
+app.post('/login',userwithdb.User.login)
+app.put('/editProfile',middleware.verifyToken,userwithdb.User.editProfile)
 
 
-app.listen(port, () => console.log(`Your node js server is running ${port}!`));
+app.listen(8008, () => {
+  console.log('App listening on port 8008!')
+});
+
 
 //initP2PServer(p2pPort)

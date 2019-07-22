@@ -1,152 +1,186 @@
-var jwt = require('jsonwebtoken');
-var bcrypt = require('bcryptjs');
-var secret=require("../config/secret");
-const randomstring =require("randomstring");
-import {firebase} from "../firebase/firebasekey";
-const fs=require('fs')
+const firebase=require('../firebase/firebasekey')
+const express=require('express')
+const jwt=require("jsonwebtoken")
+const bcrypt=require('bcryptjs');
+const hiddendata=require('../secret')
+const secret=hiddendata.secret;
+const dept=require('../firebase/department')
+const randomstring=require("randomstring")
 
 
-var generateString=function(){
-    var theString=randomstring.generate({
-        length:8,
-        charset:'numeric'
-    });
-    return theString;
+
+
     
-}
-
-
-
-var User= /** @class */ (function () {
-    function user(username,email,password) {
-        this.username=username,
-       // this.role=role;
-        this.email=email,
-        this.password=password
-        //this.ImageUrl=ImageUrl
-    }
-    return user;
-}());
-
-  
-//work on the other details later
-const register=function login(data,callback){
-    var id=generateString();
-    var hashedPassword = bcrypt.hashSync(data.password, 8);
-    
-    var newUser=new User(data.username,data.email,data.password)
-    const userReference=firebase.database().ref("staff");
-    userReference.child(id).set({
-        username:newUser.username,
-        email:newUser.email,
-        password:newUser.password
-
-    },function(error){
-      if(error){
-          console.log("Registration failed"+error);
-          return false
-
-      }else{
-         
-        var token = jwt.sign({user:newUser},secret.jwt, {
-            expiresIn: 60 * 24 
-          });
-      }
-    
-      return callback({
-          auth:true,
-          token:token,
-          user:newUser
-      })
-    })
-
-}
-
-const checkifUserExist=function(email,callback){
-    
-    const user=firebase.database().ref("staff").orderByChild('email').equalTo(email);
-    user.on("value",function(snapshot){
-        if (snapshot.exists()) {
-          var  userExist=true
-        }
-        else{
-           var  userExist=false
-        }
-           return callback({
-               userExist:userExist
-           })
-        })
-    } 
-
-       
-
-
-const login=function(data,callback){
-   checkifUserExist(data.email,function(detail){
-    var userExist=detail.userExist
-    if(!userExist){
-        return callback({
-            auth:false,
-            response:"User with this email does not exist"
-        })
-       
-    }else{
-        const user=firebase.database().ref("staff").orderByChild('email').equalTo(data.email);
-        user.on("child_added",function(snapshot){
-            var userpassword = snapshot.val().password; 
-            var passwordIsValid = bcrypt.compareSync(data.password, userpassword);
-            
-            if (!passwordIsValid) {
-               var response="The password you entered might be incorrect"
-               var auth=false
-            }else
-            {   
-                 var auth=true;
-                var response="Login successfully";
-                var token = jwt.sign({user:user},secret.jwt, {
-                    expiresIn: 86400
-                  });
-            }
-              return callback({
-                  auth:auth,
-                  response:response,
-                  token:token
-              })
-                  }
+    var dbRef = firebase.firebase.database()
+    var usersRef = dbRef.ref('users')
    
 
+    var generateString=function(){
+        var theString=randomstring.generate({
+            length:8,
+            charset:'numeric'
+        })
+        return theString;
+    }
 
-
-        )}
-
-                })
-
-
+    const checkifuserexist=function(email,callback){
         
+        const user=usersRef.orderByChild('email').equalTo(email)
+        user.once("value",function(snapshot){
+            if(snapshot.exists()){
+                var userExist=true
             }
+            else{
+                var userExist=false
+            }
+            return callback({
+                userExist:userExist
+            })
+        })
+    }
 
+    const User = {
+        /**
+         * Create A User
+         * @param {object} req 
+         * @param {object} res
+      
+         */
+        async create(req, res) {
+            var role=req.user.role
+            if(role!=='admin'){
+                res.status(400).send("You need admin privileges to perform this task")
+            }
+            else{
+             
+                var email=req.body.email;
+            checkifuserexist(email,function(detail){
+            var userExist=detail.userExist
+            if(!userExist){
+            var id=generateString()
+           var depart=req.body.dept
+           var role="";
+           if(depart=='Admin'){
+            role=new dept.admin()
+           }else if(depart=="Sales"){
+            role=new dept.sales()
+           }
+           else if(depart=="Human Resource"){
+            role=new dept.humanResource()
+           }
 
-
-        const createfolder=function(projectTitle,callback){
-                var path='./src/'+projectTitle
-                                fs.mkdir(path,function(err,data){
-                                    if(err){
-                                        return callback(err,null)
-                                    }
-                                    else{
-                                        return callback({
-                                            path:path,
-                                            success:"You created folder successfully"
-                                        })
-
-                                    }
-                                  
-    
-                                })
-                               
-                            }
-                           
-
+           var user={
+               id:id,
+               email:email,
+               department:role
+           }
+           usersRef.child(id).set({
+               id:id,
+               date:Date().toString().slice(0,24),
+               email:email,
+               department:role
+           },function(err){
+               if(err){
+                   console.log(err)
+               }
+               else{
+                   var token=jwt.sign({user:user},secret,{
+                       expiresIn:60*24
+                   })
+                   return res.status(200).send({token:token});
+          
+               }
+           })
             
-  
-export{register,login,createfolder};
+
+                    
+                }else{
+                    res.status(404).send("User with credentials already exist")
+                }
+
+            })
+
+            }
+            
+           
+          
+        },
+        /**
+         * Login
+         * @param {object} req 
+         * @param {object} res
+         * @returns {object} user object 
+         */
+        async login(req, res) {
+           
+            checkifuserexist(req.body.email,function(detail){
+                var userExist=detail.userExist
+                if(!userExist){
+                    res.status(404).send("The password or email is incorrect")
+                }
+                else{
+                   const user=usersRef.orderByChild('email').equalTo(req.body.email)
+                   user.on("child_added",function(snapshot){
+                     var password=snapshot.val().department.password 
+                    // console.log(snapshot.val().department.password)     
+                     if(password!==req.body.password){
+                         
+                         res.status(404).send("Wrong email or password")
+                     }
+                     else{
+                        
+                         var user={
+                             id:snapshot.key,
+                             email:snapshot.val().email,
+                             role:snapshot.val().department.role
+                         }
+                         
+                         var token=jwt.sign({user:user},secret,{
+                        expiresIn:86400
+                         })
+                        
+                         res.status(200).send({
+                             token:token,
+                             expiresIn:60*24,
+                             role:user.role
+
+                            })
+                     }
+                   })     
+                }
+            })
+
+        },
+
+        async editProfile(req,res){
+            var email=req.user.email
+            var id=req.user.id
+            checkifuserexist(email,function(detail){
+                var userExist=detail.userExist
+                if(!userExist){
+                    res.status(404).send("You are not authorised to take this task")
+                }
+                else{
+                    var password=req.body.password
+                    let details=req.body
+                    usersRef.child(id).update({
+                        'department/password':password,
+                        personaldetails:details
+                    },(err,data)=>{
+                        if(err){
+                            console.log(err)
+                            res.status(404).send("Error updating user Profile")
+                        }else{
+                            res.status(200).send("Profile updated successful")
+                        }
+                    })
+                }
+            })
+
+        }
+
+    }
+
+    module.exports={
+        User:User
+    }

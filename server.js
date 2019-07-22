@@ -19,7 +19,7 @@ require('dotenv').config();
 
 
 import {connectToPeers, getSockets, initP2PServer} from './src/peer2peer';
-import {Block,Transaction,LandOwnerShip, generateNextBlock, getBlockchain,networkNodes,currentNodeUrl} from './src/blockchain';
+import {Block,Transaction,LandOwnerShip, generateNextBlock, getBlockchain,networkNodes,currentNodeUrl,addBlock} from './src/blockchain';
 import {generatekeys,generateSignature,getDataFromSignature,ProcessTransaction,transact,isValidAddress}from './src/transaction';
 import {firebase}from './firebase/firebasekey';
 import {addland,landownership,saveAsaasecode,getAsaaseDetails,updateAsaaseCode,asaasecodeExist,addLandToAccount,setLandForSale,removeFromSale,getallLandsForSale,getallTransactions,addTransaction} from './firebase/modules';
@@ -135,7 +135,8 @@ import {register,login,createfolder} from './authentication/authentication';
 
               app.post('/recieve-new-block', function(req, res) {
             
-                var newBlock = generateNextBlock(req.body.newBlock);
+                var newBlock =req.body.newBlock
+                addBlock(newBlock);
                 var feedback=newBlock.message;
                 res.send(feedback)
 
@@ -292,21 +293,22 @@ import {register,login,createfolder} from './authentication/authentication';
       app.post('/mineBlock', function (req, res) {
         var newBlock = generateNextBlock(req.body);
         var feedback=newBlock.message;
-        const newestBlock=newBlock.newBlock
+        
         const requestPromises=[]
         networkNodes.forEach(NetworkNodeURL=>{
         const requestOptions={
         uri:NetworkNodeURL +'/recieve-new-block',
         method:'POST',
-        body:{newBlock:newestBlock},
+        body:newBlock,
         json:true
     };
    requestPromises.push(rp(requestOptions));
+  
    Promise.all(requestPromises).then(data =>{
     res.json({note:'new block mined successfully'})
 })
 });
-        res.send(feedback)
+       res.send(newBlock)
       });
     
       

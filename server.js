@@ -7,7 +7,7 @@ const bodyParser=require("body-parser");
 const rp=require('request-promise');
 const port=process.argv[2];
 var p2pPort = parseInt(process.env.P2P_PORT) || 6001;
-const blockchain=require("./src/blockchain");
+
 const cors = require('cors')
 const app = express();
 const routes=require('./firebase/route');
@@ -19,7 +19,7 @@ require('dotenv').config();
 
 
 import {connectToPeers, getSockets, initP2PServer} from './src/peer2peer';
-import {Block,Transaction,LandOwnerShip, generateNextBlock, getBlockchain,networkNodes,currentNodeUrl,addBlock} from './src/blockchain';
+import {Block,Transaction,LandOwnerShip,generateNextBlock,blockchain, getBlockchain,networkNodes,currentNodeUrl,addBlock,replaceChain} from './src/blockchain';
 import {generatekeys,generateSignature,getDataFromSignature,ProcessTransaction,transact,isValidAddress}from './src/transaction';
 import {firebase}from './firebase/firebasekey';
 import {addland,landownership,saveAsaasecode,getAsaaseDetails,updateAsaaseCode,asaasecodeExist,addLandToAccount,setLandForSale,removeFromSale,getallLandsForSale,getallTransactions,addTransaction} from './firebase/modules';
@@ -139,6 +139,56 @@ import {register,login,createfolder} from './authentication/authentication';
                 addBlock(newBlock);
                 var feedback=newBlock.message;
                 res.send(feedback)
+
+              });
+              app.get('/consensus',function(req,res){
+
+                const promises=[]
+                networkNodes.forEach(NetworkNodeURL=>{
+                    const requestOptions={
+                        uri:NetworkNodeURL +'/blocks',
+                        method:'GET',
+                        json:true
+                    };
+              
+                    promises.push(rp(requestOptions));
+                   
+                 })
+                
+                 Promise.all(promises).then(chain=>{
+                  const currentchainlenth=blockchain.length;
+                  let maxchainLength=currentchainlenth;
+                  let newlongestchain=null;
+                  
+                  chain.forEach(block=>{ 
+                 
+                    if(block.blockchain.length > maxchainLength){
+                        maxchainLength=block.blockchain.length;
+                        newlongestchain=block.blockchain;
+                      
+          
+          
+                    };
+                });
+          
+                if(newlongestchain){
+                  replaceChain(newlongestchain);
+                  //btc.pendingTransactions=newpendingTransactions
+                  res.json({note:'this is the new current longest chain',
+                  chain:blockchain
+           })
+           
+           
+           }
+                
+              else if(!newlongestchain || (newlongestchain && !chainIsValid(newlongestchain))){
+                  res.json({note:'current chain has not been replaced',
+                  chain:blockchain,
+                  longest_chain_length:blockchain.length
+            });
+            } 
+              })
+
 
               });
       app.post('/login',function(req,res){
@@ -293,7 +343,6 @@ import {register,login,createfolder} from './authentication/authentication';
       app.post('/mineBlock', function (req, res) {
         var newBlock = generateNextBlock(req.body);
         var feedback=newBlock.message;
-        
         const requestPromises=[]
         networkNodes.forEach(NetworkNodeURL=>{
         const requestOptions={

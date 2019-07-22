@@ -312,15 +312,36 @@ var replaceChain = function (newBlocks) {
         getAccumulatedDifficulty(newBlocks) > getAccumulatedDifficulty(getBlockchain())) {
         console.log('Received blockchain is valid. Replacing current blockchain with received blockchain');
         blockchain = newBlocks;
-        broadcastLatest();
+        //return blockchain;
+       // broadcastLatest();
     }
     else {
         console.log('Received blockchain invalid');
     }
 };
 
-    
-    export {Block,currentNodeUrl,networkNodes, getBlockchain, getLatestBlock, generateNextBlock, isValidBlockStructure, replaceChain, addBlock};    
+var chainIsValid=function(blockchain){
+    let validChain=false;
+    for(var i=1;i<blockchain.length;i++){
+        const currentBlock=blockchain['blockchain'][i];
+        const previousBlock=blockchain['blockchain'][i-1];
+        const blockHash=this.hashBlock(previousBlock['hash'],{transactions:currentBlock['transactions'],index:currentBlock['index']},currentBlock['nonce'])
+        if(currentBlock['previousHash']===previousBlock['hash'])validChain=true; 
+        //if(blockHash.substring(0,4)==='0000')validChain=true
+        
+        
+     };
+const genesisBlock=blockchain['blockchain'][0];
+
+const correctNonce=genesisBlock['nonce']===0;
+const correctPrevBlockHash=genesisBlock['previousHash']==='0';
+const correcthash=genesisBlock['hash']==='0';
+//const correcttrx=genesisBlock['transactions'].length===0;
+if(correctNonce  || correctPrevBlockHash || correcthash)
+validChain=true
+return validChain;
+};
+    export {Block,chainIsValid,currentNodeUrl,networkNodes,replaceChain, getBlockchain, getLatestBlock, generateNextBlock, isValidBlockStructure, blockchain, addBlock};    
     
     
 
